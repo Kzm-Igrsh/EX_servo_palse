@@ -20,7 +20,12 @@ const int SPEED_SLOW = 700;  // 遅い（0.7秒間隔）
 const int SPEED_FAST = 300;  // 速い（0.3秒間隔）
 
 // テスト設定
-const int PULSE_COUNT = 5;  // 各速度で5回パルス
+const int PULSE_COUNT = 5;  // フルテスト：各速度で5回パルス
+const int PATTERN_PULSE_COUNT = 3;  // 10パターン：各3回パルス
+const int PATTERN_INTERVAL = 3000;  // 10パターンのインターバル3秒
+
+// 長押し判定時間（ミリ秒）
+const int LONG_PRESS_TIME = 1000;  // 1秒以上で長押し
 
 void testPulse(Servo &servo, int servoNum, int pin, int speed, const char* speedName) {
   M5.Display.clear();
@@ -78,10 +83,10 @@ void runAllTests() {
   M5.Display.setCursor(0, 0);
   M5.Display.setTextSize(2);
   M5.Display.println("Starting");
-  M5.Display.println("Test...");
+  M5.Display.println("Full Test");
   delay(1000);
   
-  Serial.println("=== Starting 3 Servo Pulse Test ===");
+  Serial.println("=== Starting Full Servo Test ===");
   
   // Servo 1 (G5)
   testServo(servo1, 1, SERVO1_PIN);
@@ -92,34 +97,117 @@ void runAllTests() {
   // Servo 3 (G7)
   testServo(servo3, 3, SERVO3_PIN);
   
-  Serial.println("=== All Tests Complete ===");
+  Serial.println("=== Full Test Complete ===");
   
   M5.Display.clear();
   M5.Display.setCursor(0, 0);
   M5.Display.setTextSize(2);
-  M5.Display.println("All Test");
+  M5.Display.println("Full Test");
   M5.Display.println("Complete!");
   M5.Display.println("");
   M5.Display.setTextSize(1);
-  M5.Display.println("");
-  M5.Display.println("Press button");
-  M5.Display.println("to test again");
+  M5.Display.println("Short: Full test");
+  M5.Display.println("Long: 10x pattern");
   
   delay(2000);
+}
+
+void executePattern(int servoNum, int angle, int speed, int moveNum) {
+  // 全サーボを0°に戻す
+  servo1.write(ANGLE_0);
+  servo2.write(ANGLE_0);
+  servo3.write(ANGLE_0);
+  delay(100);
+  
+  Servo* targetServo;
+  int pin;
+  
+  switch(servoNum) {
+    case 1:
+      targetServo = &servo1;
+      pin = SERVO1_PIN;
+      break;
+    case 2:
+      targetServo = &servo2;
+      pin = SERVO2_PIN;
+      break;
+    case 3:
+      targetServo = &servo3;
+      pin = SERVO3_PIN;
+      break;
+  }
+  
+  const char* speedName = (speed == SPEED_SLOW) ? "SLOW" : "FAST";
   
   M5.Display.clear();
   M5.Display.setCursor(0, 0);
   M5.Display.setTextSize(1);
-  M5.Display.println("3 Servo Pulse Test");
-  M5.Display.println("==================");
+  M5.Display.printf("Move %d/10\n", moveNum);
+  M5.Display.println("==============");
   M5.Display.println("");
-  M5.Display.println("Pins: G5,G6,G7");
+  M5.Display.setTextSize(2);
+  M5.Display.printf("Servo %d\n", servoNum);
+  M5.Display.println(speedName);
+  M5.Display.setTextSize(1);
+  M5.Display.printf("G%d: %dms", pin, speed);
+  
+  Serial.printf("Move %d/10: Servo%d G%d %s (%dms)\n", moveNum, servoNum, pin, speedName, speed);
+  
+  // 3回パルス動作
+  for (int i = 0; i < PATTERN_PULSE_COUNT; i++) {
+    targetServo->write(ANGLE_0);
+    delay(speed);
+    targetServo->write(ANGLE_90);
+    delay(speed);
+    Serial.printf("  Pulse %d/3\n", i + 1);
+  }
+  
+  // 最後は0°に戻す
+  targetServo->write(ANGLE_0);
+  
+  delay(PATTERN_INTERVAL);  // 3秒インターバル
+}
+
+void run10Pattern() {
+  M5.Display.clear();
+  M5.Display.setCursor(0, 0);
+  M5.Display.setTextSize(2);
+  M5.Display.println("Starting");
+  M5.Display.println("10x Pattern");
+  delay(1000);
+  
+  Serial.println("\n=== 10 Pattern Fixed Sequence ===");
+  
+  // 不規則な順番と強度（全箇所×全速度を網羅）
+  executePattern(2, ANGLE_90, SPEED_FAST, 1);   // Servo2 速い
+  executePattern(3, ANGLE_90, SPEED_SLOW, 2);   // Servo3 遅い
+  executePattern(3, ANGLE_90, SPEED_FAST, 3);   // Servo1 速い
+  executePattern(2, ANGLE_90, SPEED_SLOW, 4);   // Servo2 遅い（速度変更パターン）
+  executePattern(1, ANGLE_90, SPEED_SLOW, 5);   // Servo1 遅い
+  executePattern(3, ANGLE_90, SPEED_FAST, 6);   // Servo3 速い
+  executePattern(2, ANGLE_90, SPEED_FAST, 7);   // Servo2 速い
+  executePattern(1, ANGLE_90, SPEED_FAST, 8);   // Servo1 速い
+  executePattern(3, ANGLE_90, SPEED_SLOW, 9);   // Servo3 遅い
+  executePattern(1, ANGLE_90, SPEED_SLOW, 10);  // Servo1 遅い
+  
+  // 全サーボを0°に戻す
+  servo1.write(ANGLE_0);
+  servo2.write(ANGLE_0);
+  servo3.write(ANGLE_0);
+  
+  Serial.println("=== 10 Pattern Complete ===\n");
+  
+  M5.Display.clear();
+  M5.Display.setCursor(0, 0);
+  M5.Display.setTextSize(2);
+  M5.Display.println("10x Pattern");
+  M5.Display.println("Complete!");
   M5.Display.println("");
-  M5.Display.println("Each servo:");
-  M5.Display.println(" SLOW 5 pulses");
-  M5.Display.println(" FAST 5 pulses");
-  M5.Display.println("");
-  M5.Display.println("Press to start");
+  M5.Display.setTextSize(1);
+  M5.Display.println("Short: Full test");
+  M5.Display.println("Long: 10x pattern");
+  
+  delay(2000);
 }
 
 void setup() {
@@ -150,11 +238,11 @@ void setup() {
   M5.Display.println("3 Servo Pulse Test");
   M5.Display.println("==================");
   M5.Display.println("");
-  M5.Display.println("Pins: G5,G6,G7");
+  M5.Display.println("Short press:");
+  M5.Display.println(" Full test");
   M5.Display.println("");
-  M5.Display.println("Each servo:");
-  M5.Display.println(" SLOW 5 pulses");
-  M5.Display.println(" FAST 5 pulses");
+  M5.Display.println("Long press:");
+  M5.Display.println(" 10x pattern");
   M5.Display.println("");
   M5.Display.println("Press to start");
 }
@@ -162,10 +250,28 @@ void setup() {
 void loop() {
   M5.update();
   
-  // ボタン押下：テスト開始
+  // ボタンが押された瞬間の時刻を記録
   if (M5.BtnA.wasPressed()) {
-    Serial.println("Button pressed - Starting test");
-    runAllTests();
+    unsigned long pressStartTime = millis();
+    
+    // ボタンが離されるまで待つ
+    while (M5.BtnA.isPressed()) {
+      M5.update();
+      delay(10);
+    }
+    
+    // 押していた時間を計算
+    unsigned long pressDuration = millis() - pressStartTime;
+    
+    if (pressDuration >= LONG_PRESS_TIME) {
+      // 長押し：10パターン実行（不規則順）
+      Serial.printf("Long press detected (%lums)\n", pressDuration);
+      run10Pattern();
+    } else {
+      // 短押し：フルテスト実行
+      Serial.printf("Short press detected (%lums)\n", pressDuration);
+      runAllTests();
+    }
   }
   
   delay(10);
