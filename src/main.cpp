@@ -27,7 +27,7 @@ const int LONG_PRESS_TIME = 1000;  // 1秒以上で長押し
 
 // 10パターンのパルス回数（3-5回）とインターバル（0-500ms）
 const int patternPulseCounts[10] = {4, 3, 5, 3, 4, 5, 3, 4, 5, 4};  // 回
-const int patternIntervals[10] = {400, 250, 150, 350, 50, 450, 200, 300, 0, 100};  // ms (0-500ms)
+const int patternIntervals[10] = {150, 350, 0, 450, 100, 250, 500, 200, 300, 50};  // ms (0-500ms) 順序変更
 
 void testPulse(Servo &servo, int servoNum, int pin, int speed, const char* speedName) {
   M5.Display.clear();
@@ -184,16 +184,16 @@ void run10Pattern() {
   Serial.println("\n=== 10 Pattern Fixed Sequence ===");
   
   // 固定の10パターン（順番と速度は固定、パルス回数とインターバルだけバラバラ）
-  executePattern(2, ANGLE_90, SPEED_FAST, 1, patternPulseCounts[0], patternIntervals[0]);   // Servo2 速い 4回 / 400ms
-  executePattern(3, ANGLE_90, SPEED_SLOW, 2, patternPulseCounts[1], patternIntervals[1]);   // Servo3 遅い 3回 / 250ms
-  executePattern(1, ANGLE_90, SPEED_FAST, 3, patternPulseCounts[2], patternIntervals[2]);   // Servo1 速い 5回 / 150ms
-  executePattern(2, ANGLE_90, SPEED_SLOW, 4, patternPulseCounts[3], patternIntervals[3]);   // Servo2 遅い 3回 / 350ms
-  executePattern(1, ANGLE_90, SPEED_SLOW, 5, patternPulseCounts[4], patternIntervals[4]);   // Servo1 遅い 4回 / 50ms
-  executePattern(3, ANGLE_90, SPEED_FAST, 6, patternPulseCounts[5], patternIntervals[5]);   // Servo3 速い 5回 / 450ms
-  executePattern(2, ANGLE_90, SPEED_FAST, 7, patternPulseCounts[6], patternIntervals[6]);   // Servo2 速い 3回 / 200ms
-  executePattern(1, ANGLE_90, SPEED_FAST, 8, patternPulseCounts[7], patternIntervals[7]);   // Servo1 速い 4回 / 300ms
-  executePattern(3, ANGLE_90, SPEED_SLOW, 9, patternPulseCounts[8], patternIntervals[8]);   // Servo3 遅い 5回 / 0ms
-  executePattern(1, ANGLE_90, SPEED_SLOW, 10, patternPulseCounts[9], patternIntervals[9]);  // Servo1 遅い 4回 / 100ms
+  executePattern(2, ANGLE_90, SPEED_FAST, 1, patternPulseCounts[0], patternIntervals[0]);   // Servo2 速い 4回 / 150ms
+  executePattern(3, ANGLE_90, SPEED_SLOW, 2, patternPulseCounts[1], patternIntervals[1]);   // Servo3 遅い 3回 / 350ms
+  executePattern(1, ANGLE_90, SPEED_FAST, 3, patternPulseCounts[2], patternIntervals[2]);   // Servo1 速い 5回 / 0ms
+  executePattern(2, ANGLE_90, SPEED_SLOW, 4, patternPulseCounts[3], patternIntervals[3]);   // Servo2 遅い 3回 / 450ms
+  executePattern(1, ANGLE_90, SPEED_SLOW, 5, patternPulseCounts[4], patternIntervals[4]);   // Servo1 遅い 4回 / 100ms
+  executePattern(3, ANGLE_90, SPEED_FAST, 6, patternPulseCounts[5], patternIntervals[5]);   // Servo3 速い 5回 / 250ms
+  executePattern(2, ANGLE_90, SPEED_FAST, 7, patternPulseCounts[6], patternIntervals[6]);   // Servo2 速い 3回 / 500ms
+  executePattern(3, ANGLE_90, SPEED_FAST, 8, patternPulseCounts[7], patternIntervals[7]);   // Servo1 速い 4回 / 200ms
+  executePattern(3, ANGLE_90, SPEED_SLOW, 9, patternPulseCounts[8], patternIntervals[8]);   // Servo3 遅い 5回 / 300ms
+  executePattern(1, ANGLE_90, SPEED_SLOW, 10, patternPulseCounts[9], patternIntervals[9]);  // Servo1 遅い 4回 / 50ms
   
   // 全サーボを0°に戻す
   servo1.write(ANGLE_0);
