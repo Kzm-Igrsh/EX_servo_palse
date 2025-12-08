@@ -21,11 +21,13 @@ const int SPEED_FAST = 300;  // 速い（0.3秒間隔）
 
 // テスト設定
 const int PULSE_COUNT = 5;  // フルテスト：各速度で5回パルス
-const int PATTERN_PULSE_COUNT = 3;  // 10パターン：各3回パルス
-const int PATTERN_INTERVAL = 3000;  // 10パターンのインターバル3秒
 
 // 長押し判定時間（ミリ秒）
 const int LONG_PRESS_TIME = 1000;  // 1秒以上で長押し
+
+// 10パターンのパルス回数（3-5回）とインターバル（0-500ms）
+const int patternPulseCounts[10] = {4, 3, 5, 3, 4, 5, 3, 4, 5, 4};  // 回
+const int patternIntervals[10] = {400, 250, 150, 350, 50, 450, 200, 300, 0, 100};  // ms (0-500ms)
 
 void testPulse(Servo &servo, int servoNum, int pin, int speed, const char* speedName) {
   M5.Display.clear();
@@ -112,7 +114,7 @@ void runAllTests() {
   delay(2000);
 }
 
-void executePattern(int servoNum, int angle, int speed, int moveNum) {
+void executePattern(int servoNum, int angle, int speed, int moveNum, int pulseCount, int intervalTime) {
   // 全サーボを0°に戻す
   servo1.write(ANGLE_0);
   servo2.write(ANGLE_0);
@@ -149,23 +151,26 @@ void executePattern(int servoNum, int angle, int speed, int moveNum) {
   M5.Display.printf("Servo %d\n", servoNum);
   M5.Display.println(speedName);
   M5.Display.setTextSize(1);
-  M5.Display.printf("G%d: %dms", pin, speed);
+  M5.Display.printf("G%d: %dms\n", pin, speed);
+  M5.Display.printf("Count: %d\n", pulseCount);
+  M5.Display.printf("Wait: %dms", intervalTime);
   
-  Serial.printf("Move %d/10: Servo%d G%d %s (%dms)\n", moveNum, servoNum, pin, speedName, speed);
+  Serial.printf("Move %d/10: Servo%d G%d %s (%dms) Count:%d Wait:%dms\n", 
+                moveNum, servoNum, pin, speedName, speed, pulseCount, intervalTime);
   
-  // 3回パルス動作
-  for (int i = 0; i < PATTERN_PULSE_COUNT; i++) {
+  // パルス動作
+  for (int i = 0; i < pulseCount; i++) {
     targetServo->write(ANGLE_0);
     delay(speed);
     targetServo->write(ANGLE_90);
     delay(speed);
-    Serial.printf("  Pulse %d/3\n", i + 1);
+    Serial.printf("  Pulse %d/%d\n", i + 1, pulseCount);
   }
   
   // 最後は0°に戻す
   targetServo->write(ANGLE_0);
   
-  delay(PATTERN_INTERVAL);  // 3秒インターバル
+  delay(intervalTime);
 }
 
 void run10Pattern() {
@@ -178,17 +183,17 @@ void run10Pattern() {
   
   Serial.println("\n=== 10 Pattern Fixed Sequence ===");
   
-  // 不規則な順番と強度（全箇所×全速度を網羅）
-  executePattern(2, ANGLE_90, SPEED_FAST, 1);   // Servo2 速い
-  executePattern(3, ANGLE_90, SPEED_SLOW, 2);   // Servo3 遅い
-  executePattern(3, ANGLE_90, SPEED_FAST, 3);   // Servo1 速い
-  executePattern(2, ANGLE_90, SPEED_SLOW, 4);   // Servo2 遅い（速度変更パターン）
-  executePattern(1, ANGLE_90, SPEED_SLOW, 5);   // Servo1 遅い
-  executePattern(3, ANGLE_90, SPEED_FAST, 6);   // Servo3 速い
-  executePattern(2, ANGLE_90, SPEED_FAST, 7);   // Servo2 速い
-  executePattern(1, ANGLE_90, SPEED_FAST, 8);   // Servo1 速い
-  executePattern(3, ANGLE_90, SPEED_SLOW, 9);   // Servo3 遅い
-  executePattern(1, ANGLE_90, SPEED_SLOW, 10);  // Servo1 遅い
+  // 固定の10パターン（順番と速度は固定、パルス回数とインターバルだけバラバラ）
+  executePattern(2, ANGLE_90, SPEED_FAST, 1, patternPulseCounts[0], patternIntervals[0]);   // Servo2 速い 4回 / 400ms
+  executePattern(3, ANGLE_90, SPEED_SLOW, 2, patternPulseCounts[1], patternIntervals[1]);   // Servo3 遅い 3回 / 250ms
+  executePattern(1, ANGLE_90, SPEED_FAST, 3, patternPulseCounts[2], patternIntervals[2]);   // Servo1 速い 5回 / 150ms
+  executePattern(2, ANGLE_90, SPEED_SLOW, 4, patternPulseCounts[3], patternIntervals[3]);   // Servo2 遅い 3回 / 350ms
+  executePattern(1, ANGLE_90, SPEED_SLOW, 5, patternPulseCounts[4], patternIntervals[4]);   // Servo1 遅い 4回 / 50ms
+  executePattern(3, ANGLE_90, SPEED_FAST, 6, patternPulseCounts[5], patternIntervals[5]);   // Servo3 速い 5回 / 450ms
+  executePattern(2, ANGLE_90, SPEED_FAST, 7, patternPulseCounts[6], patternIntervals[6]);   // Servo2 速い 3回 / 200ms
+  executePattern(1, ANGLE_90, SPEED_FAST, 8, patternPulseCounts[7], patternIntervals[7]);   // Servo1 速い 4回 / 300ms
+  executePattern(3, ANGLE_90, SPEED_SLOW, 9, patternPulseCounts[8], patternIntervals[8]);   // Servo3 遅い 5回 / 0ms
+  executePattern(1, ANGLE_90, SPEED_SLOW, 10, patternPulseCounts[9], patternIntervals[9]);  // Servo1 遅い 4回 / 100ms
   
   // 全サーボを0°に戻す
   servo1.write(ANGLE_0);
@@ -264,7 +269,7 @@ void loop() {
     unsigned long pressDuration = millis() - pressStartTime;
     
     if (pressDuration >= LONG_PRESS_TIME) {
-      // 長押し：10パターン実行（不規則順）
+      // 長押し：10パターン実行
       Serial.printf("Long press detected (%lums)\n", pressDuration);
       run10Pattern();
     } else {
