@@ -29,6 +29,14 @@ const int LONG_PRESS_TIME = 1000;  // 1秒以上で長押し
 const int patternPulseCounts[10] = {4, 3, 5, 3, 4, 5, 3, 4, 5, 4};  // 回
 const int patternIntervals[10] = {150, 350, 0, 450, 100, 250, 500, 200, 300, 50};  // ms (0-500ms)
 
+// ========================================
+// シリアル通信用ヘルパー関数
+// PC側のPython GUIが期待する厳密なフォーマットで出力
+// ========================================
+void sendStimMessage(const char* position, const char* strength) {
+  Serial.printf("%s,%s\n", position, strength);
+}
+
 void testPulse(Servo &servo, const char* position, int pin, int speed, const char* strengthName) {
   M5.Display.clear();
   M5.Display.setCursor(0, 0);
@@ -41,7 +49,10 @@ void testPulse(Servo &servo, const char* position, int pin, int speed, const cha
   M5.Display.println("");
   M5.Display.println("Testing...");
   
-  Serial.printf("=== %s G%d: %s (%dms) ===\n", position, pin, strengthName, speed);
+  // ========================================
+  // パルス刺激開始 - PC側へメッセージ送信
+  // ========================================
+  sendStimMessage(position, strengthName);
   
   for (int i = 0; i < PULSE_COUNT; i++) {
     // 0°
@@ -51,7 +62,6 @@ void testPulse(Servo &servo, const char* position, int pin, int speed, const cha
     M5.Display.setTextSize(2);
     M5.Display.printf("Pulse %d/5\n", i + 1);
     M5.Display.printf("0 deg");
-    Serial.printf("Pulse %d: 0 deg\n", i + 1);
     delay(speed);
     
     // 90°
@@ -61,12 +71,16 @@ void testPulse(Servo &servo, const char* position, int pin, int speed, const cha
     M5.Display.setTextSize(2);
     M5.Display.printf("Pulse %d/5\n", i + 1);
     M5.Display.printf("90 deg");
-    Serial.printf("Pulse %d: 90 deg\n", i + 1);
     delay(speed);
   }
   
   // 最後は0°に戻す
   servo.write(ANGLE_0);
+  
+  // ========================================
+  // パルス刺激終了 - インターバル開始
+  // ========================================
+  sendStimMessage("none", "none");
   delay(500);
 }
 
@@ -88,8 +102,6 @@ void runAllTests() {
   M5.Display.println("Full Test");
   delay(1000);
   
-  Serial.println("=== Starting Full Servo Test ===");
-  
   // Left (G5)
   testServo(servoLeft, "Left", SERVO_LEFT_PIN);
   
@@ -98,8 +110,6 @@ void runAllTests() {
   
   // Right (G7)
   testServo(servoRight, "Right", SERVO_RIGHT_PIN);
-  
-  Serial.println("=== Full Test Complete ===");
   
   M5.Display.clear();
   M5.Display.setCursor(0, 0);
@@ -137,6 +147,7 @@ void executePattern(const char* position, int speed, int moveNum, int pulseCount
   
   const char* strengthName = (speed == SPEED_WEAK) ? "Weak" : "Strong";
   
+  // 画面表示
   M5.Display.clear();
   M5.Display.setCursor(0, 0);
   M5.Display.setTextSize(1);
@@ -151,8 +162,10 @@ void executePattern(const char* position, int speed, int moveNum, int pulseCount
   M5.Display.printf("Count: %d\n", pulseCount);
   M5.Display.printf("Wait: %dms", intervalTime);
   
-  Serial.printf("Move %d/20: %s G%d %s (%dms) Count:%d Wait:%dms\n", 
-                moveNum, position, pin, strengthName, speed, pulseCount, intervalTime);
+  // ========================================
+  // パルス刺激開始 - PC側へメッセージ送信
+  // ========================================
+  sendStimMessage(position, strengthName);
   
   // パルス動作
   for (int i = 0; i < pulseCount; i++) {
@@ -160,14 +173,17 @@ void executePattern(const char* position, int speed, int moveNum, int pulseCount
     delay(speed);
     targetServo->write(ANGLE_90);
     delay(speed);
-    Serial.printf("  Pulse %d/%d\n", i + 1, pulseCount);
   }
   
   // 最後は0°に戻す
   targetServo->write(ANGLE_0);
   
-  // インターバル中は「None」を表示
+  // ========================================
+  // インターバル開始 - "none,none" を送信
+  // ========================================
   if (intervalTime > 0) {
+    sendStimMessage("none", "none");
+    
     M5.Display.clear();
     M5.Display.setCursor(0, 0);
     M5.Display.setTextSize(1);
@@ -180,8 +196,10 @@ void executePattern(const char* position, int speed, int moveNum, int pulseCount
     M5.Display.setTextSize(1);
     M5.Display.printf("Wait:%dms", intervalTime);
     
-    Serial.printf("  Interval: None (Wait:%dms)\n", intervalTime);
     delay(intervalTime);
+  } else {
+    // インターバルが0msの場合も "none,none" を送信
+    sendStimMessage("none", "none");
   }
 }
 
@@ -192,8 +210,6 @@ void run20Pattern() {
   M5.Display.println("Starting");
   M5.Display.println("20x Pattern");
   delay(1000);
-  
-  Serial.println("\n=== 20 Pattern Fixed Sequence ===");
   
   // 1~10回目
   executePattern("Center", SPEED_STRONG, 1, patternPulseCounts[0], patternIntervals[0]);  // Center Strong 4回 / 150ms
@@ -224,8 +240,6 @@ void run20Pattern() {
   servoCenter.write(ANGLE_0);
   servoRight.write(ANGLE_0);
   
-  Serial.println("=== 20 Pattern Complete ===\n");
-  
   M5.Display.clear();
   M5.Display.setCursor(0, 0);
   M5.Display.setTextSize(2);
@@ -243,24 +257,20 @@ void setup() {
   auto cfg = M5.config();
   M5.begin(cfg);
   
+  // シリアル通信初期化（115200bps）
   Serial.begin(115200);
-  Serial.println("3 Servo Pulse Auto Test");
   
-  // サーボ初期化
-  Serial.printf("Init Left Servo: Pin=%d\n", SERVO_LEFT_PIN);
+  // サーボ初期化（デバッグ出力なし）
   servoLeft.attach(SERVO_LEFT_PIN);
   servoLeft.write(ANGLE_0);
   
-  Serial.printf("Init Center Servo: Pin=%d\n", SERVO_CENTER_PIN);
   servoCenter.attach(SERVO_CENTER_PIN);
   servoCenter.write(ANGLE_0);
   
-  Serial.printf("Init Right Servo: Pin=%d\n", SERVO_RIGHT_PIN);
   servoRight.attach(SERVO_RIGHT_PIN);
   servoRight.write(ANGLE_0);
   
-  Serial.println("Servo Init Complete");
-  
+  // 初期画面表示
   M5.Display.clear();
   M5.Display.setTextSize(1);
   M5.Display.setCursor(0, 0);
@@ -273,9 +283,6 @@ void setup() {
   M5.Display.setTextSize(1);
   M5.Display.println("Short: Full test");
   M5.Display.println("Long: 20x pattern");
-  
-  Serial.println("\nShort press: Full test");
-  Serial.println("Long press: 20x pattern\n");
 }
 
 void loop() {
@@ -296,11 +303,9 @@ void loop() {
     
     if (pressDuration >= LONG_PRESS_TIME) {
       // 長押し：20パターン実行
-      Serial.printf("Long press detected (%lums)\n", pressDuration);
       run20Pattern();
     } else {
       // 短押し：フルテスト実行
-      Serial.printf("Short press detected (%lums)\n", pressDuration);
       runAllTests();
     }
     
